@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Quiz;
 use App\Models\Answer;
+use App\Models\Quizeresults;
 use Illuminate\Http\Request; 
 use JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -164,8 +165,6 @@ class QuizController extends Controller
      */
     public function submit_quiz(Request $request)
     {
-        
-         
         $data = $request->only('answer_id', 'quiz_id');
         $validator = Validator::make($data, [
             'quiz_id' => 'required',
@@ -183,35 +182,33 @@ class QuizController extends Controller
             foreach($answers as $answer){ 
                 if(Answer::select('status')->where(['id'=>$answer,'status'=> true])->exists()){
                     $correctAnswers++;
-                }else{
-                    $incorrectAnswers++; 
                 }
+                // else{
+                //     $incorrectAnswers++;  //when create score only given questions answers and ignore skipper 
+                // }
             }
         }
         
-        $quiz = Quiz::with('questions')->find($request->answer_id);
-        echo "<pre>";
-        print_r($quiz);
-               
-        // // echo "<pre>";
-        // echo '$countQuestions'.$countQuestions;
-        // echo $correctAnswers;
-        // echo "incorrectAnswers".$incorrectAnswers;
-        exit;
-
-        //Request is valid, create new quiz
-        // $quiz = Quiz::create([
-        //     'title' => $request->title,
-        //     'description' => $request->description,
-        //     'publish' => $request->publish, 
-        // ]);
-
-        //quiz created, return success response
+        $quiz = Quiz::withCount('questions')->find($request->quiz_id);
+        if($quiz->questions_count>0){
+            $incorrectAnswers = $quiz->questions_count-$correctAnswers;
+        }
+        
+        $score = number_format(($correctAnswers/$quiz->questions_count) * 100,2); 
+        $result = Quizeresults::create([
+             'user_id'=>JWTAuth::user()->id,
+             'quiz_id'=>$request->quiz_id,
+             'correctAnswers'=>$correctAnswers,
+             'incorrectAnswers'=>$incorrectAnswers,
+             'totalQuestions'=>$quiz->questions_count,
+             'score'=>$score, //saved in percentage
+            ]);
+        //quiz created, return success response 
         return response()->json([
             'success' => true,
             'error'=>null,
             'message' => 'Quiz Submitted successfully',
-            'data' => $quiz
+            'data' => $result
         ], Response::HTTP_OK);
     }
 

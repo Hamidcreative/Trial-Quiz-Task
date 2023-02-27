@@ -24,7 +24,6 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     //Submit Quiz
     Route::post('quiz/submit', [QuizController::class, 'submit_quiz']);
     
-    
     // Questions 
     Route::get('questions', [QuestionController::class, 'index']);
     Route::get('questions/{id}', [QuestionController::class, 'show']);
